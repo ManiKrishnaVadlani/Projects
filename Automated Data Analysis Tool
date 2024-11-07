@@ -1,0 +1,95 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+class DataAnalysisTool:
+    def __init__(self, file_path):
+        """
+        Initializes the data analysis tool with the given file path.
+        
+        Parameters:
+        - file_path (str): Path to the CSV data file.
+        """
+        self.file_path = file_path
+        self.data = None
+        self.load_data()
+
+    def load_data(self):
+        """
+        Loads data from the CSV file and performs initial cleaning.
+        """
+        try:
+            self.data = pd.read_csv(self.file_path)
+            print("Data loaded successfully.")
+            self.clean_data()
+        except FileNotFoundError:
+            print("File not found. Please check the file path.")
+
+    def clean_data(self):
+        """
+        Cleans the dataset by handling missing values and duplicates.
+        """
+        # Drop duplicates
+        self.data.drop_duplicates(inplace=True)
+        
+        # Handle missing values - this example fills numeric columns with the median
+        # and categorical columns with the mode
+        for column in self.data.columns:
+            if self.data[column].dtype in [np.float64, np.int64]:
+                self.data[column].fillna(self.data[column].median(), inplace=True)
+            else:
+                self.data[column].fillna(self.data[column].mode()[0], inplace=True)
+
+        print("Data cleaned.")
+
+    def process_data(self):
+        """
+        Processes the data to extract meaningful insights.
+        Example transformations and calculations.
+        """
+        # Sample calculations and transformations
+        self.data['Sales_Growth'] = self.data['Sales'].pct_change().fillna(0)
+        self.data['Profit_Margin'] = (self.data['Profit'] / self.data['Sales']) * 100
+        
+        print("Data processed.")
+
+    def visualize_data(self):
+        """
+        Creates basic visualizations to aid in data interpretation.
+        """
+        # Sales growth trend
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.data['Date'], self.data['Sales_Growth'], label='Sales Growth', color='b')
+        plt.title('Sales Growth Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Sales Growth (%)')
+        plt.legend()
+        plt.show()
+
+        # Profit margin trend
+        plt.figure(figsize=(10, 6))
+        plt.plot(self.data['Date'], self.data['Profit_Margin'], label='Profit Margin', color='g')
+        plt.title('Profit Margin Over Time')
+        plt.xlabel('Date')
+        plt.ylabel('Profit Margin (%)')
+        plt.legend()
+        plt.show()
+        
+    def generate_report(self):
+        """
+        Generates a summary report of the analysis.
+        """
+        report = {
+            'Total Sales': self.data['Sales'].sum(),
+            'Average Profit Margin': self.data['Profit_Margin'].mean(),
+            'Maximum Sales Growth': self.data['Sales_Growth'].max()
+        }
+        print("Report Generated:\n", report)
+        return report
+
+# Example usage:
+file_path = 'business_data.csv'  # Replace with the path to your CSV file
+tool = DataAnalysisTool(file_path)
+tool.process_data()
+tool.visualize_data()
+report = tool.generate_report()
