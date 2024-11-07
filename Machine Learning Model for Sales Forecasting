@@ -1,0 +1,130 @@
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+class SalesForecastingModel:
+    def __init__(self, file_path):
+        """
+        Initializes the Sales Forecasting Model with the given data file path.
+
+        Parameters:
+        - file_path (str): Path to the CSV file containing historical sales data.
+        """
+        self.file_path = file_path
+        self.data = None
+        self.model = None
+        self.scaler = StandardScaler()
+        self.load_data()
+
+    def load_data(self):
+        """
+        Loads data from the CSV file and handles missing values.
+        """
+        try:
+            self.data = pd.read_csv(self.file_path)
+            print("Data loaded successfully.")
+            self.clean_data()
+        except FileNotFoundError:
+            print("File not found. Please check the file path.")
+
+    def clean_data(self):
+        """
+        Cleans and preprocesses the data for modeling.
+        """
+        # Dropping duplicates and handling missing values
+        self.data.drop_duplicates(inplace=True)
+        self.data.fillna(method='ffill', inplace=True)
+
+        # Convert 'Date' column to datetime if it exists
+        if 'Date' in self.data.columns:
+            self.data['Date'] = pd.to_datetime(self.data['Date'])
+            # Extracting features from date
+            self.data['Year'] = self.data['Date'].dt.year
+            self.data['Month'] = self.data['Date'].dt.month
+            self.data['Day'] = self.data['Date'].dt.day
+
+        print("Data cleaned and preprocessed.")
+
+    def feature_engineering(self):
+        """
+        Performs feature engineering to prepare data for the model.
+        """
+        # Drop unnecessary columns
+        self.data.drop(columns=['Date'], inplace=True)
+
+        # Define features and target variable
+        self.features = self.data.drop(columns=['Sales'])
+        self.target = self.data['Sales']
+
+        # Scale features for improved model performance
+        self.features = self.scaler.fit_transform(self.features)
+        print("Feature engineering completed.")
+
+    def train_model(self):
+        """
+        Splits the data, trains the RandomForest model, and evaluates its performance.
+        """
+        # Split data into training and test sets
+        X_train, X_test, y_train, y_test = train_test_split(
+            self.features, self.target, test_size=0.2, random_state=42)
+
+        # Initialize and train the model
+        self.model = RandomForestRegressor(n_estimators=100, random_state=42)
+        self.model.fit(X_train, y_train)
+
+        # Predictions and evaluation
+        y_pred = self.model.predict(X_test)
+        mae = mean_absolute_error(y_test, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_test, y_pred))
+
+        print(f"Model Training Completed.\nMAE: {mae:.2f}\nRMSE: {rmse:.2f}")
+        return mae, rmse
+
+    def predict_sales(self, input_data):
+        """
+        Predicts sales based on the input features.
+        
+        Parameters:
+        - input_data (DataFrame): Data for which predictions are to be made.
+        
+        Returns:
+        - sales_forecast (array): Predicted sales values.
+        """
+        input_data_scaled = self.scaler.transform(input_data)
+        sales_forecast = self.model.predict(input_data_scaled)
+        return sales_forecast
+
+    def visualize_results(self):
+        """
+        Visualizes the feature importance for model interpretation.
+        """
+        feature_importance = self.model.feature_importances_
+        features = self.data.drop(columns=['Sales']).columns
+        plt.figure(figsize=(10, 6))
+        sns.barplot(x=feature_importance, y=features)
+        plt.title('Feature Importance for Sales Forecasting')
+        plt.show()
+
+# Example usage
+file_path = 'sales_data.csv'  # Replace with your actual file path
+forecasting_model = SalesForecastingModel(file_path)
+forecasting_model.feature_engineering()
+forecasting_model.train_model()
+forecasting_model.visualize_results()
+
+# Sample prediction
+# Assuming new_data contains columns Year, Month, Day, etc.
+new_data = pd.DataFrame({
+    'Year': [2024], 
+    'Month': [10], 
+    'Day': [15], 
+    # Add other relevant features
+})
+predicted_sales = forecasting_model.predict_sales(new_data)
+print("Predicted Sales:", predicted_sales)
